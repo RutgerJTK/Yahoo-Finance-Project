@@ -150,7 +150,7 @@ def calculate_cagr(years_list, dividends2):
 
 def main():
     """Setting some simple global variables"""
-    ticker = 'ABR'
+    ticker = 'T'
     # Note: url period2 will age over time, thus not displaying the most recent dividend.
     url = "https://sg.finance.yahoo.com/quote/{}/history?period1=1&period2=1728985600&interval=capitalGain%7Cdiv%7Csplit&filter=div&frequency=1d&includeAdjustedClose=true".format(
         ticker)
