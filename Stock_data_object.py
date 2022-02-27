@@ -42,6 +42,7 @@ class stock_analyse:
 
         pass
 
+
     def get_balance_sheet(self):
         pass
 
