@@ -8,6 +8,7 @@ import yahoofinancials as yfs
 from yahoofinancials import YahooFinancials
 from yahoofinancials import YahooFinanceETL
 import re
+import matplotlib.pyplot as plt
 
 import lxml
 from lxml import html
@@ -172,6 +173,49 @@ def calculate_cagr(years_list, dividends2):
         print("Compound annual growthrate spanning ", n3, "years: ", round(cagr_n3, 3), "%")
 
 
+def dataroma_miner():
+    print("mining")
+    roma_url = "https://www.dataroma.com/m/managers.php"
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
+                      '(KHTML, like Gecko) Chrome/71.0.3578.98 Safari/537.36'}
+    page = requests.get(roma_url, headers=headers)
+    element_html = html.fromstring(page.content)
+    table = element_html.xpath("//table")
+    table_tree = lxml.etree.tostring(table[0], method='xml')
+    tabbie = pd.read_html(table_tree)
+    tframe = tabbie[0]
+    tframe['Top 10 holdings (left to right)'].value_counts()
+    shitlist = []
+
+    for i in range(len(tframe)):
+        for j in range(len(tframe.iloc[i][3:])):
+            try:
+                ticker = str(tframe.iloc[i][3:][j][0:5])
+                ticker = ticker.split(" ")
+                shitlist.append(ticker[0])
+            except TypeError:
+                continue
+    dtf = pd.DataFrame(shitlist)
+    print(dtf.value_counts().sort_values(ascending=False).head(40))
+    return shitlist
+
+
+def sid(tickers_list):
+    print("visualising")
+    t_dict = {}
+    for i in tickers_list:
+        if tickers_list.count(i) >= 4:
+            t_dict[i] = tickers_list.count(i)
+
+    tickers = list(t_dict.keys())
+    frequencies = list(t_dict.values())
+    plt.bar(range(len(t_dict)), frequencies, tick_label=tickers, width=0.5)
+    plt.xticks(rotation=90, ha='right')
+    plt.title('Super investors most held stonks')
+    plt.show()
+
+
 def main():
     """Setting some simple global variables"""
     ticker = 'ADM'
@@ -196,5 +240,6 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
-
+    print("Main")
+    shitlist = dataroma_miner() # mine super investor data
+    sid(shitlist)    # super investor data - visualiser
