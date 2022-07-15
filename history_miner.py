@@ -8,6 +8,7 @@ import yahoofinancials as yfs
 from yahoofinancials import YahooFinancials
 from yahoofinancials import YahooFinanceETL
 import re
+import matplotlib.pyplot as plt
 
 import lxml
 from lxml import html
@@ -23,7 +24,6 @@ def criterion_1(ticker):
     file_name = 'dividend_info_vscode_{}.csv'.format(ticker)
     print(yfticker.info['exchange'])
     print("BETA:", yfticker.info['beta'])
-    # print(yfticker.info['sector'])
     print(yfticker.info['industry'])
     files_present = glob.glob(file_name)
     if files_present:
@@ -33,7 +33,16 @@ def criterion_1(ticker):
     print("Criterion 1 for", ticker)
     print("Q1: Is the dividend undervalued on historical basis?")
     historical_dividend = yfticker.info['fiveYearAvgDividendYield']
+    print(type(historical_dividend))
+    print(historical_dividend)
+
+    historical_dividend = float(historical_dividend)
     current_dividend = yfticker.info['dividendYield']
+    if historical_dividend >= 0:
+        print(historical_dividend)
+    else:
+        print("No Historic Dividend available")
+        
     if historical_dividend < (current_dividend * 100):
         print("A1: Dividend yield currently undervalued, it adheres to rule 1. It is a buy.")
     else:
@@ -49,12 +58,26 @@ def criterion_2(ticker, url, header):
     ## answer: maybe xpaths? --> used medium article:
     "https://medium.com/c%C3%B3digo-ecuador/python-web-scraping-yahoo-finance-stock-dividend-history-d9084c85c805"
     dividends = scrape_page(url, header)
-    added_divs_list = order_dividends(dividends)  # Done!
-    calculate_dgy(added_divs_list)
+    # added_divs_list = order_dividends(dividends)  # Done!
+    # calculate_dgy(added_divs_list)
     # calculate_cagr(years_list, dividends2)
+    return dividends
 
 
-def scrape_page(url, header):
+def criterion_3(ticker, url, header):
+    print("crit 3 for ", ticker)
+    print("Does the stock offer a decent payout ratio? This should be below 50% :")
+    yfticker = yf.Ticker(ticker)
+    payout = ((float(yfticker.info['payoutRatio'])) * 100)
+    if payout < 50:
+        print("Payout ratio: ", payout, "%")
+        print(" ~ ~ ~ Ratio is below 50%, it adheres to the criteria")
+    elif payout > 49.99:
+        print("Payout ratio: ", payout, "%")
+        print(" ~ ~ ~ Ratio is above 50%, it is not a buy")
+
+
+def scrape_page(url, header):   # dividends page
     page = requests.get(url, headers=header, timeout=5)
     element_html = html.fromstring(page.content)
     table = element_html.xpath("//table[@data-test = 'historical-prices']")
@@ -94,13 +117,12 @@ def order_dividends(dividends):
                 div2 = 0
                 counter = 0
     added_divs_list.append(div2)
-    # added_divs_list = added_divs_list[0:10]
-    print(added_divs_list)
+    print("List of cummulative dividends the past years: ", added_divs_list)
     return added_divs_list
 
 
 def calculate_dgy(added_divs_list):
-    print("Years of growht and CAGR (WIP)")
+    print("Years of growth and CAGR (WIP)")
     counter = 0
     cur = 0
     prev = 0
@@ -109,6 +131,7 @@ def calculate_dgy(added_divs_list):
     new_highest = 0
     for counter in range(len(added_divs_list)):
         cur = added_divs_list[counter]
+        print(cur)
         if counter > 0:
             prev = added_divs_list[counter - 1]
         if prev > cur:
@@ -120,8 +143,10 @@ def calculate_dgy(added_divs_list):
             highest = 0
         counter += 1
     if highest > new_highest:
+        print("The recent dividend streak is the highest.")
         print("Years of consecutive dividend growth: ", old_highest)
     else:
+        print("The highest dividend raise streak was before the current one.")
         print("Years of consecutive dividend growth: ", new_highest)
 
 
@@ -148,12 +173,56 @@ def calculate_cagr(years_list, dividends2):
         print("Compound annual growthrate spanning ", n3, "years: ", round(cagr_n3, 3), "%")
 
 
+def dataroma_miner():
+    print("mining")
+    roma_url = "https://www.dataroma.com/m/managers.php"
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
+                      '(KHTML, like Gecko) Chrome/71.0.3578.98 Safari/537.36'}
+    page = requests.get(roma_url, headers=headers)
+    element_html = html.fromstring(page.content)
+    table = element_html.xpath("//table")
+    table_tree = lxml.etree.tostring(table[0], method='xml')
+    tabbie = pd.read_html(table_tree)
+    tframe = tabbie[0]
+    tframe['Top 10 holdings (left to right)'].value_counts()
+    shitlist = []
+
+    for i in range(len(tframe)):
+        for j in range(len(tframe.iloc[i][3:])):
+            try:
+                ticker = str(tframe.iloc[i][3:][j][0:5])
+                ticker = ticker.split(" ")
+                shitlist.append(ticker[0])
+            except TypeError:
+                continue
+    dtf = pd.DataFrame(shitlist)
+    print(dtf.value_counts().sort_values(ascending=False).head(40))
+    return shitlist
+
+
+def sid(tickers_list):
+    print("visualising")
+    t_dict = {}
+    for i in tickers_list:
+        if tickers_list.count(i) >= 4:
+            t_dict[i] = tickers_list.count(i)
+
+    tickers = list(t_dict.keys())
+    frequencies = list(t_dict.values())
+    plt.bar(range(len(t_dict)), frequencies, tick_label=tickers, width=0.5)
+    plt.xticks(rotation=90, ha='right')
+    plt.title('Super investors most held stonks')
+    plt.show()
+
+
 def main():
     """Setting some simple global variables"""
-    ticker = 'T'
+    ticker = 'ADM'
     # Note: url period2 will age over time, thus not displaying the most recent dividend.
-    url = "https://sg.finance.yahoo.com/quote/{}/history?period1=1&period2=1728985600&interval=capitalGain%7Cdiv%7Csplit&filter=div&frequency=1d&includeAdjustedClose=true".format(
+    url_divs = "https://sg.finance.yahoo.com/quote/{}/history?period1=1&period2=1728985600&interval=capitalGain%7Cdiv%7Csplit&filter=div&frequency=1d&includeAdjustedClose=true".format(
         ticker)
+    url_stats = "https://finance.yahoo.com/quote/{}/key-statistics?p={}".format(ticker, ticker)
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
                       '(KHTML, like Gecko) Chrome/71.0.3578.98 Safari/537.36'}
@@ -164,9 +233,13 @@ def main():
     print("-" * 100)
     criterion_1(ticker)
     print("+"*100)
-    criterion_2(ticker, url, headers)
+    criterion_2(ticker, url_divs, headers)
+    print("-"*100)
+    criterion_3(ticker, url_stats, headers)
+    print("-"*100)
 
 
 if __name__ == "__main__":
-    main()
-
+    print("Main")
+    shitlist = dataroma_miner() # mine super investor data
+    sid(shitlist)    # super investor data - visualiser
