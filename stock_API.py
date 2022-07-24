@@ -10,11 +10,12 @@ def get_stock_data_yahoo(ticker):
 
 
 
-ticker = 'AAPL'
+ticker = 'T'
 
 
 for i in get_stock_data_yahoo(ticker):
     print(i)
+
 
 
 
