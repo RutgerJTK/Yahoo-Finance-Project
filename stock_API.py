@@ -16,21 +16,34 @@ def get_stock_data_yahoo(ticker):
 
 
 def safe_info_to_csv(ticker):
-    '''
+    """
     This function takes a ticker and returns a csv file with the info of the ticker.
-    '''
+    """
     try:
-        with open('Stock_info/{}.csv'.format(ticker), 'w', newline='') as csvfile:
-            spamwriter = csv.writer(csvfile, delimiter=' ',
+        if ticker == "":
+            print("No ticker provided")
+        elif not ticker.isalpha():
+            print("Ticker is not a string")
+            return None
+        else:
+            with open('Stock_info/{}.csv'.format(ticker), 'w', newline='') as csvfile:
+                writer = csv.writer(csvfile, delimiter=' ',
                                     quotechar='|', quoting=csv.QUOTE_MINIMAL)
-            dir = get_stock_data_yahoo(ticker)
-            for key, values in dir.items():
-                spamwriter.writerow([key, ":", values])
-        return csvfile
+                dir = get_stock_data_yahoo(ticker)
+                if "exchange" in dir:
+                    for key, values in dir.items():
+                        writer.writerow([key, ":", values])
+                    return csvfile
+                else:
+                    print("No data available or non existing ticker")
+                    return None
     except Exception as e:
+        print(e)
+        return None
+    except KeyError as e:
         print(e)
         return None
 
 
-ticker = 'kaasbrod'
+ticker = input("Enter a ticker: ")
 safe_info_to_csv(ticker)
